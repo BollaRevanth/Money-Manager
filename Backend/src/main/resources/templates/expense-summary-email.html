@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily expense summary</title>
+    <style>
+        body  { margin:0; padding:16px; font-family:Arial,Helvetica,sans-serif; font-size:14px; color:#222; }
+        p     { margin:0 0 12px 0; }
+        table { width:100%; border-collapse:collapse; }
+        th, td { border:1px solid #ddd; padding:8px; text-align:left; }
+        th    { background-color:#f2f2f2; }
+    </style>
+</head>
+<body>
+
+<p>Hi <span th:text="${name}">User</span>,</p>
+<p>Here is your expense summary for today:</p>
+
+<table>
+    <tr>
+        <th>S.No</th>
+        <th>Name</th>
+        <th>Amount</th>
+        <th>Category</th>
+        <th>Date</th>
+    </tr>
+    <tr th:each="e, stat : ${expenses}">
+        <td th:text="${stat.count}">1</td>
+        <td th:text="${e.name}">Lunch</td>
+        <td th:text="${e.amount}">100</td>
+        <td th:text="${e.categoryName}">Food</td>
+        <td th:text="${e.date}">2026-10-14</td>
+    </tr>
+</table>
+
+<p style="margin-top:14px;"><b>Total: <span th:text="${total}">0</span></b></p>
+<p>Best regards,<br>Money Manager Team</p>
+
+</body>
+</html>

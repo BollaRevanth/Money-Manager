@@ -1,0 +1,50 @@
+HELP.md
+
+### Backend (Spring Boot / Maven) ###
+Backend/target/
+**/target/
+!**/.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+### Frontend (React / Vite / Node) ###
+Frontend/node_modules/
+**/node_modules/
+Frontend/dist/
+**/dist/
+**/build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### Environment & OS Secrets ###
+.env
+**/.env
+.env.*
+**/.env.*
+.DS_Store
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### IntelliJ IDEA ###
+.idea/
+**/.idea/
+*.iws
+**/*.iml
+*.ipr
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/nbdist/
+/.nb-gradle/
+
+### VS Code ###
+.vscode/
+**/.vscode/
