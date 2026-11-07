@@ -1,0 +1,4 @@
+[build]
+  base = "Frontend/Money Manager Frontend"
+  command = "npm run build"
+  publish = "dist"

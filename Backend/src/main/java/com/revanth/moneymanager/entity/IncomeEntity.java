@@ -3,7 +3,8 @@ package com.revanth.moneymanager.entity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -12,12 +13,16 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+import static com.revanth.moneymanager.util.DateUtil.today;
+
 @Entity
-@Data
+@Getter
+@Setter
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-@Table(name = "tbl_incomes")
+@Table(name = "tbl_incomes",
+        indexes = @Index(name = "idx_income_profile_date", columnList = "profile_id, date"))
 public class IncomeEntity {
 
     @Id
@@ -45,7 +50,7 @@ public class IncomeEntity {
     @PrePersist
     public void prePersist(){
         if(this.date == null){
-            this.date = LocalDate.now();
+            this.date = today();
         }
     }
 }

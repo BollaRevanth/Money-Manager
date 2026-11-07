@@ -2,6 +2,7 @@ package com.revanth.moneymanager.controller;
 
 import com.revanth.moneymanager.dto.ExpenseDTO;
 import com.revanth.moneymanager.service.ExpenseService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,7 +18,7 @@ public class ExpenseController {
     private final ExpenseService expenseService;
 
     @PostMapping
-    public ResponseEntity<ExpenseDTO> addExpense(@RequestBody ExpenseDTO dto){
+    public ResponseEntity<ExpenseDTO> addExpense(@Valid @RequestBody ExpenseDTO dto){
         ExpenseDTO saved = expenseService.addExpense(dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
@@ -32,6 +33,11 @@ public class ExpenseController {
     public ResponseEntity<Void> deleteExpense(@PathVariable Long id){
         expenseService.deleteExpense(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<ExpenseDTO> updateExpense(@PathVariable Long id, @Valid @RequestBody ExpenseDTO dto){
+        return ResponseEntity.ok(expenseService.updateExpense(id, dto));
     }
 
 }

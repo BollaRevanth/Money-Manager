@@ -48,3 +48,11 @@ Frontend/dist/
 ### VS Code ###
 .vscode/
 **/.vscode/
+
+### Local config (the application-local.properties I suggested earlier) ###
+**/application-local.properties
+**/application-local.yml
+
+### Misc ###
+*.log
+*.local

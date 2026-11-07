@@ -3,70 +3,67 @@ package com.revanth.moneymanager.service;
 import com.revanth.moneymanager.dto.ExpenseDTO;
 import com.revanth.moneymanager.dto.IncomeDTO;
 import com.revanth.moneymanager.dto.RecentTransactionDTO;
-import com.revanth.moneymanager.entity.ProfileEntity;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
-
-import static java.util.stream.Stream.concat;
+import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
 public class DashboardService {
 
+    private static final Comparator<RecentTransactionDTO> NEWEST_FIRST = Comparator
+            .comparing(RecentTransactionDTO::getDate, Comparator.reverseOrder())
+            .thenComparing(RecentTransactionDTO::getCreatedAt,
+                    Comparator.nullsLast(Comparator.reverseOrder()));
+
     private final IncomeService incomeService;
-    private  final ExpenseService expenseService;
-    private  final ProfileService profileService;
+    private final ExpenseService expenseService;
+    private final ProfileService profileService;
 
-    public Map<String,Object> getDashboard(){
-        ProfileEntity profile = profileService.getCurrentProfile();
-        Map<String,Object> returnValue = new LinkedHashMap<>();
-        List<IncomeDTO> latestIncomes = incomeService.getLatest5IncomesForCurrentUser();
-        List<ExpenseDTO> latestExpenses = expenseService.getLatest5ExpensesForCurrentUser();
-        List<RecentTransactionDTO> recentTransactions =  concat(latestIncomes.stream().map(income ->
-                RecentTransactionDTO.builder()
-                        .id(income.getId())
-                        .profileId(profile.getId())
-                        .icon(income.getIcon())
-                        .name(income.getName())
-                        .amount(income.getAmount())
-                        .date(income.getDate())
-                        .createdAt(income.getCreatedAt())
-                        .updatedAt(income.getUpdatedAt())
-                        .type("income")
-                        .build()),
-                latestExpenses.stream().map(expense ->
-                        RecentTransactionDTO.builder()
-                                .id(expense.getId())
-                                .profileId(profile.getId())
-                                .icon(expense.getIcon())
-                                .name((expense.getName()))
-                                .amount(expense.getAmount())
-                                .date(expense.getDate())
-                                .createdAt(expense.getCreatedAt())
-                                .updatedAt(expense.getUpdatedAt())
-                                .type("expense")
-                                .build()))
-                .sorted((a,b) -> {
-                    int cmp = b.getDate().compareTo(a.getDate());
-                    if(cmp == 0 && a.getCreatedAt() != null && b.getCreatedAt() != null){
-                        return b.getCreatedAt().compareTo(a.getCreatedAt());
-                    }
-                    return cmp;
-                }).collect(Collectors.toList());
-        returnValue.put("totalBalance",
-                incomeService.getTotalIncomesForCurrentUser()
-                .subtract(expenseService.getTotalExpenseForCurrentUser()));
+    public Map<String, Object> getDashboard() {
+        Long profileId = profileService.getCurrentProfile().getId();
 
-        returnValue.put("totalIncome", incomeService.getTotalIncomesForCurrentUser());
-        returnValue.put("totalExpense", expenseService.getTotalExpenseForCurrentUser());
-        returnValue.put("recent5Expenses",latestExpenses);
-        returnValue.put("recent5Incomes",latestIncomes);
-        returnValue.put("recentTransactions",recentTransactions);
-        return returnValue;
+        List<IncomeDTO> latestIncomes = incomeService.getLatest5ForProfile(profileId);
+        List<ExpenseDTO> latestExpenses = expenseService.getLatest5ForProfile(profileId);
+
+        // all-time (used for the balance)
+        BigDecimal totalIncome = incomeService.getTotalForProfile(profileId);
+        BigDecimal totalExpense = expenseService.getTotalForProfile(profileId);
+
+        // current month (used for the income and expense cards)
+        BigDecimal monthIncome = incomeService.getCurrentMonthTotalForProfile(profileId);
+        BigDecimal monthExpense = expenseService.getCurrentMonthTotalForProfile(profileId);
+
+        List<RecentTransactionDTO> recent = Stream.concat(
+                        latestIncomes.stream().map(i -> RecentTransactionDTO.builder()
+                                .id(i.getId()).profileId(profileId).icon(i.getIcon()).name(i.getName())
+                                .amount(i.getAmount()).date(i.getDate())
+                                .createdAt(i.getCreatedAt()).updatedAt(i.getUpdatedAt())
+                                .type("income").build()),
+                        latestExpenses.stream().map(e -> RecentTransactionDTO.builder()
+                                .id(e.getId()).profileId(profileId).icon(e.getIcon()).name(e.getName())
+                                .amount(e.getAmount()).date(e.getDate())
+                                .createdAt(e.getCreatedAt()).updatedAt(e.getUpdatedAt())
+                                .type("expense").build()))
+                .sorted(NEWEST_FIRST)
+                .limit(5)
+                .toList();
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("totalBalance", totalIncome.subtract(totalExpense));   // all-time
+        result.put("monthIncome", monthIncome);
+        result.put("monthExpense", monthExpense);
+        result.put("totalIncome", totalIncome);
+        result.put("totalExpense", totalExpense);
+        result.put("recent5Expenses", latestExpenses);
+        result.put("recent5Incomes", latestIncomes);
+        result.put("recentTransactions", recent);
+        return result;
     }
 }

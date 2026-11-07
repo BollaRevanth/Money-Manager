@@ -6,6 +6,7 @@ import com.revanth.moneymanager.entity.ExpenseEntity;
 import com.revanth.moneymanager.entity.ProfileEntity;
 import com.revanth.moneymanager.repository.CategoryRepository;
 import com.revanth.moneymanager.repository.ExpenseRepository;
+import com.revanth.moneymanager.util.DateUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -14,7 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Locale;
+import java.util.NoSuchElementException;
 
 @Service
 @RequiredArgsConstructor
@@ -24,62 +25,91 @@ public class ExpenseService {
     private final ExpenseRepository expenseRepository;
     private final ProfileService profileService;
 
-    public ExpenseDTO addExpense(ExpenseDTO dto){
-      ProfileEntity profile =  profileService.getCurrentProfile();
-      CategoryEntity category = categoryRepository.findByIdAndProfileId(dto.getCategoryId(), profile.getId())
-              .orElseThrow(() -> new RuntimeException("Category not found or not accessible"));
-      if (!isType(category.getType(), "expense")) {
-          throw new IllegalArgumentException("Expense must use an expense category");
-      }
-      ExpenseEntity newExpense = toEntity(dto,profile,category);
-      newExpense = expenseRepository.save(newExpense);
-      return toDTO(newExpense);
+    @Transactional
+    public ExpenseDTO addExpense(ExpenseDTO dto) {
+        ProfileEntity profile = profileService.getCurrentProfile();
+        CategoryEntity category = resolveCategory(dto.getCategoryId(), profile.getId());
+        return toDTO(expenseRepository.save(toEntity(dto, profile, category)));
     }
 
-    public List<ExpenseDTO> getCurrentMonthExpensesForCurrentUser(){
+    @Transactional
+    public ExpenseDTO updateExpense(Long expenseId, ExpenseDTO dto) {
         ProfileEntity profile = profileService.getCurrentProfile();
-        LocalDate now = LocalDate.now();
-        LocalDate startDate = now.withDayOfMonth(1);
-        LocalDate endDate = now.withDayOfMonth(now.lengthOfMonth());
-        List<ExpenseEntity> list = expenseRepository.findByProfileIdAndDateBetween(profile.getId(),startDate,endDate);
-        return list.stream().map(this::toDTO).toList();
+        ExpenseEntity existing = findOwned(expenseId, profile.getId());
+        CategoryEntity category = resolveCategory(dto.getCategoryId(), profile.getId());
+        existing.setName(dto.getName());
+        existing.setIcon(dto.getIcon());
+        existing.setAmount(dto.getAmount());
+        existing.setDate(dto.getDate());
+        existing.setCategory(category);
+        return toDTO(expenseRepository.save(existing));
     }
 
-    public void deleteExpense(Long expenseId){
-        ProfileEntity profile = profileService.getCurrentProfile();
-        ExpenseEntity entity = expenseRepository.findById(expenseId)
-                .orElseThrow(() -> new RuntimeException("Expense not found"));
-        if(!entity.getProfile().getId().equals(profile.getId())){
-            throw new RuntimeException("Unauthorized to delete this expense");
-        }
-        expenseRepository.delete(entity);
-    }
-
-    public List<ExpenseDTO> getLatest5ExpensesForCurrentUser(){
-        ProfileEntity profile = profileService.getCurrentProfile();
-        List<ExpenseEntity> list = expenseRepository.findTop5ByProfileIdOrderByDateDesc(profile.getId());
-        return list.stream().map(this::toDTO).toList();
-    }
-
-    public BigDecimal getTotalExpenseForCurrentUser(){
-        ProfileEntity profile = profileService.getCurrentProfile();
-        BigDecimal total = expenseRepository.findTotalExpenseByProfileId(profile.getId());
-        return total != null ? total: BigDecimal.ZERO;
-    }
-
-    public List<ExpenseDTO> filterExpenses(LocalDate startDate, LocalDate endDate, String keyword, Sort sort){
-        ProfileEntity profile = profileService.getCurrentProfile();
-        List<ExpenseEntity> list = expenseRepository.findByProfileIdAndDateBetweenAndNameContainingIgnoreCase(profile.getId(),startDate,endDate,keyword,sort);
-        return list.stream().map(this::toDTO).toList();
+    @Transactional
+    public void deleteExpense(Long expenseId) {
+        Long profileId = profileService.getCurrentProfile().getId();
+        expenseRepository.delete(findOwned(expenseId, profileId));
     }
 
     @Transactional(readOnly = true)
-    public List<ExpenseDTO> getExpensesForUserOnDate(Long profileId,LocalDate date){
-        List<ExpenseEntity> list = expenseRepository.findByProfileIdAndDate(profileId,date);
-        return list.stream().map(this::toDTO).toList();
+    public List<ExpenseDTO> getCurrentMonthExpensesForCurrentUser() {
+        Long profileId = profileService.getCurrentProfile().getId();
+        LocalDate today = DateUtil.today();
+        return expenseRepository
+                .findByProfileIdAndDateBetweenOrderByDateDesc(profileId,
+                        today.withDayOfMonth(1), today.withDayOfMonth(today.lengthOfMonth()))
+                .stream().map(this::toDTO).toList();
     }
 
-    private ExpenseEntity toEntity(ExpenseDTO dto,ProfileEntity profile, CategoryEntity category) {
+    @Transactional(readOnly = true)
+    public List<ExpenseDTO> getLatest5ForProfile(Long profileId) {
+        return expenseRepository.findTop5ByProfileIdOrderByDateDesc(profileId)
+                .stream().map(this::toDTO).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public BigDecimal getTotalForProfile(Long profileId) {
+        BigDecimal total = expenseRepository.findTotalExpenseByProfileId(profileId);
+        return total != null ? total : BigDecimal.ZERO;
+    }
+
+    @Transactional(readOnly = true)
+    public BigDecimal getCurrentMonthTotalForProfile(Long profileId) {
+        LocalDate today = DateUtil.today();
+        BigDecimal total = expenseRepository.findTotalByProfileIdAndDateBetween(
+                profileId, today.withDayOfMonth(1), today.withDayOfMonth(today.lengthOfMonth()));
+        return total != null ? total : BigDecimal.ZERO;
+    }
+
+    @Transactional(readOnly = true)
+    public List<ExpenseDTO> filterExpenses(LocalDate startDate, LocalDate endDate, String keyword, Sort sort) {
+        Long profileId = profileService.getCurrentProfile().getId();
+        return expenseRepository
+                .findByProfileIdAndDateBetweenAndNameContainingIgnoreCase(profileId, startDate, endDate, keyword, sort)
+                .stream().map(this::toDTO).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<ExpenseDTO> getExpensesForUserOnDate(Long profileId, LocalDate date) {
+        return expenseRepository.findByProfileIdAndDate(profileId, date)
+                .stream().map(this::toDTO).toList();
+    }
+
+    private ExpenseEntity findOwned(Long expenseId, Long profileId) {
+        return expenseRepository.findByIdAndProfileId(expenseId, profileId)
+                .orElseThrow(() -> new NoSuchElementException("Expense not found"));
+    }
+
+    private CategoryEntity resolveCategory(Long categoryId, Long profileId) {
+        CategoryEntity category = categoryRepository.findByIdAndProfileId(categoryId, profileId)
+                .orElseThrow(() -> new NoSuchElementException("Category not found or not accessible"));
+        if (!"expense".equalsIgnoreCase(category.getType())) {
+            throw new IllegalArgumentException("Expense must use an expense category");
+        }
+        return category;
+    }
+
+    private ExpenseEntity toEntity(ExpenseDTO dto, ProfileEntity profile, CategoryEntity category) {
         return ExpenseEntity.builder()
                 .name(dto.getName())
                 .icon(dto.getIcon())
@@ -90,29 +120,17 @@ public class ExpenseService {
                 .build();
     }
 
-    private ExpenseDTO toDTO(ExpenseEntity entity) {
+    private ExpenseDTO toDTO(ExpenseEntity e) {
         return ExpenseDTO.builder()
-                .id(entity.getId())
-                .name(entity.getName())
-                .icon(entity.getIcon())
-                .categoryId(entity.getCategory() != null ? entity.getCategory().getId() : null)
-                .categoryName(entity.getCategory() != null ? entity.getCategory().getName(): "N/A")
-                .amount(entity.getAmount())
-                .date(entity.getDate())
-                .createdAt(entity.getCreatedAt())
-                .updatedAt(entity.getUpdatedAt())
+                .id(e.getId())
+                .name(e.getName())
+                .icon(e.getIcon())
+                .categoryId(e.getCategory() != null ? e.getCategory().getId() : null)
+                .categoryName(e.getCategory() != null ? e.getCategory().getName() : "N/A")
+                .amount(e.getAmount())
+                .date(e.getDate())
+                .createdAt(e.getCreatedAt())
+                .updatedAt(e.getUpdatedAt())
                 .build();
     }
-
-    private boolean isType(String actualType, String expectedType) {
-        if (actualType == null) {
-            return false;
-        }
-        String normalizedType = actualType.trim().toLowerCase(Locale.ROOT);
-        if (normalizedType.endsWith("s")) {
-            normalizedType = normalizedType.substring(0, normalizedType.length() - 1);
-        }
-        return expectedType.equals(normalizedType);
-    }
-
 }

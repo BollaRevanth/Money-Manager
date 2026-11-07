@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your report</title>
+</head>
+<body style="margin:0;padding:0;background:#f3f4f6;font-family:Arial,Helvetica,sans-serif;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:24px 0;">
+    <tr><td align="center">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e5e7eb;">
+            <tr><td style="background:#973ae6;padding:20px 28px;color:#ffffff;font-size:20px;font-weight:bold;">Money Manager</td></tr>
+            <tr><td style="padding:28px;color:#374151;font-size:15px;line-height:1.6;">
+                <p style="margin:0 0 12px;">Hi <b th:text="${name}">User</b>,</p>
+                <p style="margin:0 0 20px;">Your <b th:text="${reportType}">Income</b> report for <b th:text="${period}">November 2026</b> is attached to this email as an Excel file.</p>
+
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f9fafb;border-radius:10px;">
+                    <tr>
+                        <td style="padding:16px 20px;width:50%;">
+                            <div style="font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;">Entries</div>
+                            <div style="font-size:22px;font-weight:bold;color:#111827;margin-top:4px;" th:text="${count}">0</div>
+                        </td>
+                        <td style="padding:16px 20px;width:50%;">
+                            <div style="font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;">Total</div>
+                            <div th:style="'font-size:22px;font-weight:bold;margin-top:4px;color:' + ${accent}">&#8377;<span th:text="${#numbers.formatDecimal(total, 1, 'COMMA', 2, 'POINT')}">0.00</span></div>
+                        </td>
+                    </tr>
+                </table>
+
+                <p style="margin:20px 0 20px;font-size:13px;color:#6b7280;">Open the attachment in Excel, Google Sheets or any spreadsheet app.</p>
+                <p style="margin:0;">Best regards,<br>Money Manager Team</p>
+            </td></tr>
+            <tr><td style="background:#f9fafb;padding:16px 28px;font-size:12px;color:#9ca3af;text-align:center;">Sent from Money Manager at your request.</td></tr>
+        </table>
+    </td></tr>
+</table>
+</body>
+</html>

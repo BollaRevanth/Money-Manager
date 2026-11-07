@@ -8,12 +8,13 @@ import java.util.Optional;
 
 public interface CategoryRepository extends JpaRepository<CategoryEntity, Long> {
 
-  List<CategoryEntity> findByProfileId(Long profileId);
+    List<CategoryEntity> findByProfileId(Long profileId);
 
-  Optional<CategoryEntity> findByIdAndProfileId(Long id, Long ProfileId);
+    Optional<CategoryEntity> findByIdAndProfileId(Long id, Long profileId);
 
-  List<CategoryEntity> findByTypeAndProfileId(String type,Long profileId);
+    List<CategoryEntity> findByTypeAndProfileId(String type, Long profileId);
 
-   Boolean existsByNameAndProfileId(String name, Long ProfileId);
+    boolean existsByNameIgnoreCaseAndProfileId(String name, Long profileId);
 
+    boolean existsByNameIgnoreCaseAndProfileIdAndIdNot(String name, Long profileId, Long id);
 }

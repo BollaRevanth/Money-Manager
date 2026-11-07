@@ -1,26 +1,20 @@
-# ==========================================
-# STAGE 1: Build the Spring Boot .jar file
-# ==========================================
+# ---------- Stage 1: build ----------
 FROM maven:3-eclipse-temurin-25-noble AS build
 WORKDIR /app
 
-# 1. Copy only pom.xml first and download dependencies
 COPY pom.xml .
 RUN mvn dependency:go-offline -B
 
-# 2. Copy your Java source code and build the executable .jar
 COPY src ./src
-RUN mvn clean package -DskipTests
+RUN mvn clean package -DskipTests -B
 
-# ==========================================
-# STAGE 2: Create a lightweight runtime image
-# ==========================================
+# ---------- Stage 2: runtime ----------
 FROM eclipse-temurin:25-jre-noble
 WORKDIR /app
 
-# Copy ONLY the compiled executable .jar file from Stage 1
+RUN useradd --system --no-create-home appuser
 COPY --from=build /app/target/moneymanager-0.0.1-SNAPSHOT.jar app.jar
+USER appuser
 
-# Expose port 8080 and tune Java memory to fit inside Render's 512MB Free Tier limit
 EXPOSE 8080
-ENTRYPOINT ["java", "-Xmx350m", "-Xms128m", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-Duser.timezone=Asia/Kolkata", "-XX:+UseSerialGC", "-Xmx350m", "-Xms128m", "-Xss512k", "-jar", "app.jar"]
