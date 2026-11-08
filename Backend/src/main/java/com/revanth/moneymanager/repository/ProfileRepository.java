@@ -15,4 +15,6 @@ public interface ProfileRepository extends JpaRepository<ProfileEntity, Long> {
     Optional<ProfileEntity> findByActivationToken(String activationToken);
 
     List<ProfileEntity> findByIsActiveTrue();
+
+    Optional<ProfileEntity> findByPasswordResetToken(String passwordResetToken);
 }

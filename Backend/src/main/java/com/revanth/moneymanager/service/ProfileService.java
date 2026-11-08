@@ -4,6 +4,7 @@ import com.revanth.moneymanager.dto.AuthDTO;
 import com.revanth.moneymanager.dto.ProfileDTO;
 import com.revanth.moneymanager.entity.ProfileEntity;
 import com.revanth.moneymanager.repository.ProfileRepository;
+import com.revanth.moneymanager.util.DateUtil;
 import com.revanth.moneymanager.util.JWTUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,6 +25,14 @@ import org.springframework.web.server.ResponseStatusException;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.util.Base64;
+import java.util.HexFormat;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
@@ -34,6 +43,8 @@ import java.util.UUID;
 public class ProfileService {
 
     private static final String INVALID_CREDENTIALS = "Invalid email or password";
+    private static final Duration RESET_TOKEN_VALIDITY = Duration.ofMinutes(30);
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     private final ProfileRepository profileRepository;
     private final PasswordEncoder passwordEncoder;
@@ -42,8 +53,11 @@ public class ProfileService {
     private final JWTUtil jwtUtil;
     private final TemplateEngine templateEngine;
 
-    @Value("${app.activation.url:http://localhost:8080}")
+    @Value("${app.activation.url}")
     private String activationURL;
+
+    @Value("${money.manager.frontend.url}")
+    private String frontendUrl;
 
     @Transactional
     public ProfileDTO registerProfile(ProfileDTO dto) {
@@ -89,6 +103,59 @@ public class ProfileService {
                 .orElse(false);
     }
 
+    @Transactional
+    public void requestPasswordReset(String rawEmail) {
+        String email = normalizeEmail(rawEmail);
+        profileRepository.findByEmail(email).ifPresent(profile -> {
+            String token = generateToken();
+            profile.setPasswordResetToken(hash(token));
+            profile.setPasswordResetExpiry(LocalDateTime.now(DateUtil.APP_ZONE).plus(RESET_TOKEN_VALIDITY));
+            sendResetEmail(profile, token);
+        });
+    }
+
+    private void sendResetEmail(ProfileEntity profile, String token) {
+        String link = frontendUrl.replaceAll("/+$", "") + "/reset-password?token=" + token;
+        Context context = new Context();
+        context.setVariable("name", profile.getFullName());
+        context.setVariable("resetLink", link);
+        context.setVariable("minutes", RESET_TOKEN_VALIDITY.toMinutes());
+        String body = templateEngine.process("password-reset-email", context);
+        try {
+            emailService.sendEmail(profile.getEmail(), "Reset your Money Manager password", body);
+        } catch (RuntimeException e) {
+            // Logged, not thrown: an error here would reveal that the account exists.
+            log.error("Failed to send password reset email to {}", profile.getEmail(), e);
+        }
+    }
+
+    @Transactional
+    public void resetPassword(String token, String newPassword) {
+        LocalDateTime now = LocalDateTime.now(DateUtil.APP_ZONE);
+        ProfileEntity profile = profileRepository.findByPasswordResetToken(hash(token))
+                .filter(p -> p.getPasswordResetExpiry() != null && p.getPasswordResetExpiry().isAfter(now))
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "This reset link is invalid or has expired. Please request a new one."));
+        profile.setPassword(passwordEncoder.encode(newPassword));
+        profile.setPasswordResetToken(null);      // single use
+        profile.setPasswordResetExpiry(null);
+    }
+
+    private String generateToken() {
+        byte[] bytes = new byte[32];
+        SECURE_RANDOM.nextBytes(bytes);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+    }
+
+    private String hash(String value) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            return HexFormat.of().formatHex(digest.digest(value.getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 not available", e);
+        }
+    }
+
     public Map<String, Object> authenticateAndGenerateToken(AuthDTO authDTO) {
         String email = normalizeEmail(authDTO.getEmail());
         try {
@@ -102,7 +169,6 @@ public class ProfileService {
         if (!Boolean.TRUE.equals(profile.getIsActive())) {
             throw new DisabledException("Account is not active. Please activate your account first");
         }
-        // token generation is outside the try block, so a real bug shows up as a 500 with a log
         return Map.of("token", jwtUtil.generateToken(profile.getEmail()), "user", toDTO(profile));
     }
 
@@ -114,13 +180,6 @@ public class ProfileService {
         String email = authentication.getName();
         return profileRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("Profile Not Found with Email : " + email));
-    }
-
-    @Transactional
-    public ProfileDTO updateProfileImage(String profileImageUrl) {
-        ProfileEntity profile = getCurrentProfile();
-        profile.setProfileImageUrl(profileImageUrl);
-        return toDTO(profile);
     }
 
     public ProfileDTO getPublicProfile() {

@@ -39,6 +39,11 @@ public class ProfileEntity {
     private Boolean isActive;
     private String activationToken;
 
+    @Column(length = 64)
+    private String passwordResetToken;
+
+    private LocalDateTime passwordResetExpiry;
+
     @PrePersist
     public void prePersist(){
         if(this.isActive == null){
