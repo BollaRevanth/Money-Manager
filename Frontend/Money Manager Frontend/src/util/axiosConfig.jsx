@@ -1,7 +1,7 @@
 import axios from "axios"
 import {BASE_URL} from "./apiEndpoints.jsx"
 
-const PUBLIC_ENDPOINTS = ["/login", "/register", "/activate", "/status", "/health"]
+const PUBLIC_ENDPOINTS = ["/login", "/register", "/activate", "/forgot-password", "/reset-password", "/status", "/health"]
 
 const axiosConfig = axios.create({
   baseURL: BASE_URL,

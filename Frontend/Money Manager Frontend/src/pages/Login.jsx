@@ -75,6 +75,14 @@ const Login = () => {
                   type="password"
                   autoComplete="current-password"
               />
+              <div className="text-right">
+                <Link
+                    to="/forgot-password"
+                    className="text-sm font-medium text-primary underline transition-colors hover:text-primary-dark"
+                >
+                  Forgot password?
+                </Link>
+              </div>
               {error && (
                   <p className="rounded bg-red-50 p-2 text-center text-sm text-red-800" role="alert">
                     {error}

@@ -9,6 +9,8 @@ import LandingPage from "./pages/LandingPage.jsx"
 import AboutUs from "./pages/AboutUs";
 import ContactUs from "./pages/ContactUs";
 import EmailVerification from "./pages/EmailVerification.jsx";
+import ForgotPassword from "./pages/ForgotPassword.jsx"
+import ResetPassword from "./pages/ResetPassword.jsx"
 
 const Home = lazy(() => import("./pages/Home.jsx"))
 const Income = lazy(() => import("./pages/Income.jsx"))
@@ -26,6 +28,8 @@ const App = () => (
                     <Route path="/login" element={<Login />} />
                     <Route path="/signup" element={<Signup />} />
                     <Route path="/verify-email" element={<EmailVerification />} />
+                    <Route path="/forgot-password" element={<ForgotPassword />} />
+                    <Route path="/reset-password" element={<ResetPassword />} />
 
                     <Route path="/home" element={<LandingPage />} />
                     <Route path="/about-us" element={<AboutUs />} />
