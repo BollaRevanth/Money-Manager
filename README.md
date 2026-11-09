@@ -7,10 +7,20 @@
 </div>
 
 <p align="center">
-  <a href="https://mmoneymanager.netlify.app/home" target="_blank">
+  <a href="https://mmoneymanager.netlify.app" target="_blank">
     <img src="https://img.shields.io/badge/Visit-Production%20App-brightgreen?style=for-the-badge&logo=rocket" alt="Live Demo">
   </a>
 </p>
+
+> [!TIP]
+> ### ⚡ Quick Recruiter Access (Skip Email Verification)
+> Want to test the application instantly without signing up and verifying an email? Use the pre-configured demo account:
+>
+> | **Email** | `projectdemo2948@gmail.com` |
+> |---|---|
+> | **Password** | `demouser123@`  |
+>
+> *This account is pre-populated with sample incomes, expenses, categories, and analytics.*
 
 ## ✨ Application Preview
 
